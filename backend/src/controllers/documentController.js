@@ -1,7 +1,8 @@
 const path = require('path');
 const fs = require('fs');
 const { extractText } = require('../utils/textExtractor');
-
+const { chunkText } = require("../services/chunk-service");
+const { generateEmbedding } = require('../services/embedding-service');
 /**
  * POST /api/documents/upload
  * Upload a document, extract text, return the result
@@ -23,8 +24,18 @@ const uploadDocument = async (req, res, next) => {
 
     // Extract text
     const extracted = await extractText(filePath, mimetype);
-
-    // Build response
+    const chunks = await chunkText(extracted.text);
+    console.log(`✅ Extracted ${extracted.text.length} chars, generated ${chunks.length} chunks`);
+    console.log(`🔄 Generating embeddings using Ollama...`);
+    const chunksWithEmbeddings = [];
+    for (const chunk of chunks) {
+      const embedding = await generateEmbedding(chunk.text);
+      chunksWithEmbeddings.push({
+        ...chunk,
+        embedding
+      });
+    }
+    // --------------------------------
     const result = {
       success: true,
       document: {
@@ -46,7 +57,12 @@ const uploadDocument = async (req, res, next) => {
 
     console.log(`✅ Extracted ${extracted.text.length} chars, ~${extracted.pages} pages`);
 
-    res.json(result);
+    res.json({
+      success: true,
+      chunksCount: chunks.length,
+      chunks,
+      chunks: chunksWithEmbeddings,
+    });
 
   } catch (err) {
     next(err);
