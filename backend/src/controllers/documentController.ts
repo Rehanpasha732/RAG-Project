@@ -4,6 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { extractText } from '../utils/textExtractor';
 import { chunkText } from '../services/chunk-service';
 import { generateEmbedding } from '../services/embedding-service';
+import { getEmbeddingsCollection } from '../config/mongo';
 
 /**
  * POST /api/documents/upload
@@ -37,6 +38,23 @@ const uploadDocument = async (req: Request, res: Response, next: NextFunction) =
         embedding
       });
     }
+
+    const fileId = path.basename(file.filename, path.extname(file.filename));
+
+    const collection = await getEmbeddingsCollection();
+    await collection.insertMany(
+      chunksWithEmbeddings.map(chunk => ({
+        file_id: fileId,
+        file_name: file.originalname,
+        chunk_index: chunk.id,
+        text: chunk.text,
+        embedding: chunk.embedding,
+        metadata: chunk.metadata,
+        created_at: new Date()
+      }))
+    );
+    console.log(`💾 Stored ${chunksWithEmbeddings.length} embeddings in MongoDB Atlas`);
+
     // --------------------------------
     const result = {
       success: true,
