@@ -6,7 +6,7 @@ import documentRoutes from './routes/documentRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(cors({
@@ -31,7 +31,7 @@ app.get('/api/health', (req, res) => {
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`🚀 DocXtract backend running on http://localhost:${PORT}`);
+  console.log(`🚀 DocXtract backend running`);
 });
 
 export default app;
