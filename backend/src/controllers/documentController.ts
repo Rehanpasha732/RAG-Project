@@ -1,13 +1,15 @@
-const path = require('path');
-const fs = require('fs');
-const { extractText } = require('../utils/textExtractor');
-const { chunkText } = require("../services/chunk-service");
-const { generateEmbedding } = require('../services/embedding-service');
+import path from 'path';
+import fs from 'fs';
+import type { Request, Response, NextFunction } from 'express';
+import { extractText } from '../utils/textExtractor';
+import { chunkText } from '../services/chunk-service';
+import { generateEmbedding } from '../services/embedding-service';
+
 /**
  * POST /api/documents/upload
  * Upload a document, extract text, return the result
  */
-const uploadDocument = async (req, res, next) => {
+const uploadDocument = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -60,8 +62,7 @@ const uploadDocument = async (req, res, next) => {
     res.json({
       success: true,
       chunksCount: chunks.length,
-      chunks,
-      chunks: chunksWithEmbeddings,
+      chunks: chunksWithEmbeddings
     });
 
   } catch (err) {
@@ -73,7 +74,7 @@ const uploadDocument = async (req, res, next) => {
  * GET /api/documents/:id
  * Get previously extracted document details
  */
-const getDocument = async (req, res, next) => {
+const getDocument = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const uploadDir = path.join(__dirname, '..', '..', 'uploads');
@@ -108,7 +109,7 @@ const getDocument = async (req, res, next) => {
   }
 };
 
-function formatBytes(bytes) {
+function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -116,4 +117,4 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-module.exports = { uploadDocument, getDocument };
+export { uploadDocument, getDocument };

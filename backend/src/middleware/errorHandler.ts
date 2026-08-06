@@ -1,4 +1,11 @@
-const errorHandler = (err, req, res, next) => {
+import type { Request, Response, NextFunction } from 'express';
+
+interface AppError extends Error {
+  status?: number;
+  code?: string;
+}
+
+const errorHandler = (err: AppError, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err.message);
 
   if (err.message && err.message.startsWith('Unsupported file type')) {
@@ -21,4 +28,4 @@ const errorHandler = (err, req, res, next) => {
   });
 };
 
-module.exports = { errorHandler };
+export { errorHandler };

@@ -1,17 +1,20 @@
-const fs = require('fs');
-const path = require('path');
-const mammoth = require('mammoth');
-const pdfParse = require('pdf-parse');
+import fs from 'fs';
+import path from 'path';
+import mammoth from 'mammoth';
+import pdfParse from 'pdf-parse';
+
+export interface ExtractedDocument {
+  text: string;
+  pages: number;
+  metadata: Record<string, unknown>;
+}
 
 /**
  * Extract text from various document types
- * @param {string} filePath — Absolute file path
- * @param {string} mimetype — File MIME type
- * @returns {Promise<{text: string, pages: number, metadata: object}>}
+ * @param filePath — Absolute file path
+ * @param mimetype — File MIME type
  */
-async function extractText(filePath, mimetype) {
-  const ext = path.extname(filePath).toLowerCase();
-
+async function extractText(filePath: string, mimetype: string): Promise<ExtractedDocument> {
   switch (mimetype) {
 
     // ===== PDF =====
@@ -71,7 +74,7 @@ async function extractText(filePath, mimetype) {
     case 'image/webp':
     case 'image/tiff':
     case 'image/bmp': {
-      const Tesseract = require('tesseract.js');
+      const Tesseract = await import('tesseract.js');
       const { data } = await Tesseract.recognize(filePath, 'eng');
       return {
         text: data.text,
@@ -97,9 +100,9 @@ async function extractText(filePath, mimetype) {
 /**
  * Rough page estimate: ~3000 chars per page
  */
-function estimatePages(text) {
+function estimatePages(text: string): number {
   if (!text) return 0;
   return Math.max(1, Math.ceil(text.length / 3000));
 }
 
-module.exports = { extractText };
+export { extractText };
