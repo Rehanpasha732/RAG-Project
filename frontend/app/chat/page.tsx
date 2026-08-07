@@ -1,17 +1,21 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Send, Sparkles, Bot, User, FileText } from 'lucide-react';
 import clsx from 'clsx';
 import ParticlesBackground from '@/components/ParticlesBackground';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import AppNav from '@/components/AppNav';
 import { useAuth } from '@/context/AuthContext';
+import * as api from '@/lib/api';
+import type { AskSource } from '@/lib/api';
 
 interface ChatMessage {
   id: string;
   role: 'user' | 'bot';
   text: string;
+  sources?: AskSource[];
 }
 
 const SUGGESTIONS = [
@@ -20,11 +24,16 @@ const SUGGESTIONS = [
   'Find mentions of pricing',
 ];
 
-const MOCK_REPLIES = [
-  "This is a UI preview — I'm not connected to your documents yet. Once the backend is wired up, I'll answer using real content from your uploads.",
-  "Great question! For now this chat is just a mockup so we can nail the design first — real answers are coming in the next step.",
-  "I hear you — right now I'm only showing what the conversation will look like. Retrieval + real answers get wired in next.",
-];
+function dedupeSources(sources: AskSource[]): AskSource[] {
+  const best = new Map<string, AskSource>();
+  for (const source of sources) {
+    const existing = best.get(source.file_name);
+    if (!existing || source.score > existing.score) {
+      best.set(source.file_name, source);
+    }
+  }
+  return Array.from(best.values());
+}
 
 function ChatContent() {
   const { user } = useAuth();
@@ -43,7 +52,7 @@ function ChatContent() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
 
@@ -52,11 +61,26 @@ function ChatContent() {
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const reply = MOCK_REPLIES[Math.floor(Math.random() * MOCK_REPLIES.length)];
-      setMessages((m) => [...m, { id: crypto.randomUUID(), role: 'bot', text: reply }]);
+    try {
+      const res = await api.askQuestion(trimmed);
+      setMessages((m) => [
+        ...m,
+        { id: crypto.randomUUID(), role: 'bot', text: res.answer, sources: res.sources },
+      ]);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Something went wrong';
+      toast.error(message);
+      setMessages((m) => [
+        ...m,
+        {
+          id: crypto.randomUUID(),
+          role: 'bot',
+          text: "Sorry, I couldn't get an answer right now. Please try again.",
+        },
+      ]);
+    } finally {
       setIsTyping(false);
-    }, 1200 + Math.random() * 800);
+    }
   };
 
   return (
@@ -70,7 +94,7 @@ function ChatContent() {
             <Sparkles className="w-5 h-5 text-indigo-400" />
             Chat with your documents
           </h1>
-          <p className="text-gray-500 text-sm">Preview UI — answers below are mocked for now.</p>
+          <p className="text-gray-500 text-sm">Answers are generated from your own uploaded documents.</p>
         </div>
 
         {/* Messages */}
@@ -97,15 +121,32 @@ function ChatContent() {
                   <User className="w-4 h-4 text-gray-300" />
                 )}
               </div>
-              <div
-                className={clsx(
-                  'max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed',
-                  msg.role === 'bot'
-                    ? 'bg-white/5 border border-white/10 text-gray-200'
-                    : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white'
+              <div className="max-w-[75%] space-y-2">
+                <div
+                  className={clsx(
+                    'rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap',
+                    msg.role === 'bot'
+                      ? 'bg-white/5 border border-white/10 text-gray-200'
+                      : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white'
+                  )}
+                >
+                  {msg.text}
+                </div>
+
+                {msg.sources && msg.sources.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {dedupeSources(msg.sources).map((source, i) => (
+                      <span
+                        key={i}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-300"
+                        title={`Similarity score: ${source.score.toFixed(2)}`}
+                      >
+                        <FileText className="w-3 h-3" />
+                        {source.file_name}
+                      </span>
+                    ))}
+                  </div>
                 )}
-              >
-                {msg.text}
               </div>
             </div>
           ))}
@@ -152,7 +193,8 @@ function ChatContent() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask something about your documents…"
-            className="glass-input flex-1 py-3.5 px-5 text-sm"
+            disabled={isTyping}
+            className="glass-input flex-1 py-3.5 px-5 text-sm disabled:opacity-60"
           />
           <button
             type="submit"

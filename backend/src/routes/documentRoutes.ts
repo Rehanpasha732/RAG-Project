@@ -6,7 +6,9 @@ import {
   listDocuments,
   getDocument,
   updateDocument,
-  deleteDocument
+  deleteDocument,
+  embedQuery,
+  askQuestion
 } from '../controllers/documentController';
 
 const router = express.Router();
@@ -18,6 +20,12 @@ router.get('/', listDocuments);
 
 // Upload document + extract text + generate embeddings
 router.post('/upload', upload.single('document'), uploadDocument);
+
+// Embed a user query using the same Ollama model (first step of retrieval)
+router.post('/query-embedding', embedQuery);
+
+// Full RAG: retrieve relevant chunks + ask the LLM to answer using them
+router.post('/ask', askQuestion);
 
 // Get / rename / delete a document by ID
 router.get('/:id', getDocument);

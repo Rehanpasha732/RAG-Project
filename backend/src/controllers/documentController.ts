@@ -5,6 +5,7 @@ import type { AuthRequest } from '../middleware/auth.middleware';
 import { extractText } from '../utils/textExtractor';
 import { chunkText } from '../services/chunk-service';
 import { generateEmbedding } from '../services/embedding-service';
+import { generateAnswer } from '../services/llm-service';
 import { getEmbeddingsCollection, getDocumentsCollection } from '../config/mongo';
 
 /**
@@ -46,6 +47,7 @@ const uploadDocument = async (req: AuthRequest, res: Response, next: NextFunctio
     await embeddingsCollection.insertMany(
       chunksWithEmbeddings.map(chunk => ({
         file_id: fileId,
+        user_id: userId,
         file_name: file.originalname,
         chunk_index: chunk.id,
         text: chunk.text,
@@ -242,6 +244,109 @@ const deleteDocument = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 };
 
+/**
+ * POST /api/documents/query-embedding
+ * Take a user's question and embed it using the same Ollama model
+ * used for document chunks. First step of retrieval — no search yet.
+ */
+const embedQuery = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { query } = req.body;
+
+    if (!query || typeof query !== 'string' || !query.trim()) {
+      return res.status(400).json({ success: false, error: 'query is required' });
+    }
+
+    const embedding = await generateEmbedding(query.trim());
+
+    res.json({
+      success: true,
+      query: query.trim(),
+      dimensions: embedding.length,
+      embedding
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * Shared retrieval step: embed the query, then run MongoDB Atlas Vector
+ * Search (user-scoped) against stored chunk embeddings. Used by both
+ * askQuestion, so retrieval logic lives in exactly one place.
+ */
+async function retrieveChunks(query: string, userId: string, limit: number) {
+  const queryEmbedding = await generateEmbedding(query);
+  const embeddingsCollection = await getEmbeddingsCollection();
+
+  return embeddingsCollection.aggregate([
+    {
+      $vectorSearch: {
+        index: 'vector_index',
+        path: 'embedding',
+        queryVector: queryEmbedding,
+        filter: { user_id: { $eq: userId } },
+        numCandidates: limit * 20,
+        limit
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        file_id: 1,
+        file_name: 1,
+        chunk_index: 1,
+        text: 1,
+        score: { $meta: 'vectorSearchScore' }
+      }
+    }
+  ]).toArray();
+}
+
+/**
+ * POST /api/documents/ask
+ * Full RAG: retrieve relevant chunks via the retrieveChunks helper,
+ * then ask the LLM to answer using only those chunks as context.
+ */
+const askQuestion = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const { query, topK } = req.body;
+    const userId = req.user!.id;
+
+    if (!query || typeof query !== 'string' || !query.trim()) {
+      return res.status(400).json({ success: false, error: 'query is required' });
+    }
+
+    const limit = Number.isInteger(topK) && topK > 0 ? topK : 5;
+    const matches = await retrieveChunks(query.trim(), userId, limit);
+
+    if (matches.length === 0) {
+      return res.json({
+        success: true,
+        query: query.trim(),
+        answer: "I don't have any documents to answer this from yet. Upload something first.",
+        sources: []
+      });
+    }
+
+    const answer = await generateAnswer(
+      query.trim(),
+      matches.map(m => ({ text: m.text as string, file_name: m.file_name as string }))
+    );
+
+    res.json({
+      success: true,
+      query: query.trim(),
+      answer,
+      sources: matches.map(m => ({ file_name: m.file_name, score: m.score }))
+    });
+
+  } catch (err) {
+    next(err);
+  }
+};
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
@@ -250,4 +355,4 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-export { uploadDocument, listDocuments, getDocument, updateDocument, deleteDocument };
+export { uploadDocument, listDocuments, getDocument, updateDocument, deleteDocument, embedQuery, askQuestion };

@@ -8,6 +8,7 @@ let connected = false;
 
 export interface DocumentEmbeddingDoc {
     file_id: string;
+    user_id: string;
     file_name: string;
     chunk_index: number;
     text: string;

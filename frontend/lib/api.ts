@@ -93,3 +93,27 @@ export async function deleteDocument(id: string): Promise<{ success: boolean }> 
   });
   return handleResponse(res);
 }
+
+export interface AskSource {
+  file_name: string;
+  score: number;
+}
+
+export interface AskResponse {
+  success: boolean;
+  query: string;
+  answer: string;
+  sources: AskSource[];
+}
+
+export async function askQuestion(query: string): Promise<AskResponse> {
+  const res = await fetch(`${API_URL}/documents/ask`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${getToken()}`,
+    },
+    body: JSON.stringify({ query }),
+  });
+  return handleResponse(res);
+}
