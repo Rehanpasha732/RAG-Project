@@ -27,10 +27,10 @@ export default function ParticlesBackground() {
     let particles: Particle[] = [];
 
     const colors = [
-      'rgba(99, 102, 241, 0.4)',   // indigo
-      'rgba(139, 92, 246, 0.3)',   // purple
-      'rgba(168, 85, 247, 0.25)',  // violet
-      'rgba(59, 130, 246, 0.2)',   // blue
+      'rgba(20, 184, 166, 0.4)',   // teal
+      'rgba(34, 211, 238, 0.3)',   // cyan
+      'rgba(45, 212, 191, 0.25)',  // teal-light
+      'rgba(6, 182, 212, 0.2)',    // sky-cyan
     ];
 
     const resize = () => {
@@ -70,7 +70,7 @@ export default function ParticlesBackground() {
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(99, 102, 241, ${alpha})`;
+            ctx.strokeStyle = `rgba(20, 184, 166, ${alpha})`;
             ctx.lineWidth = 0.5;
             ctx.stroke();
           }
@@ -137,7 +137,7 @@ export default function ParticlesBackground() {
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ background: '#0a0a1a' }}
+      style={{ background: '#0b0f14' }}
     />
   );
 }

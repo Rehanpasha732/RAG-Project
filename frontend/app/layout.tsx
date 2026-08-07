@@ -4,9 +4,12 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'DocXtract — Document Text Extractor',
-  description: 'Upload documents and extract text instantly with AI-powered OCR and parsing',
-  keywords: ['document', 'text extraction', 'OCR', 'PDF', 'DOCX', 'upload'],
+  title: 'Cortex — Chat With Your Documents',
+  description: 'Cortex turns your documents into a private, searchable knowledge base you can chat with.',
+  keywords: ['document', 'RAG', 'chat', 'PDF', 'DOCX', 'knowledge base'],
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
@@ -22,13 +25,13 @@ export default function RootLayout({
             position="top-right"
             toastOptions={{
               style: {
-                background: '#12122a',
-                color: '#e2e8f0',
+                background: '#12181f',
+                color: '#e6edf3',
                 border: '1px solid rgba(255,255,255,0.1)',
                 backdropFilter: 'blur(12px)',
               },
               success: {
-                iconTheme: { primary: '#6366f1', secondary: '#fff' },
+                iconTheme: { primary: '#14b8a6', secondary: '#fff' },
               },
               error: {
                 iconTheme: { primary: '#ef4444', secondary: '#fff' },

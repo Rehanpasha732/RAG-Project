@@ -1,12 +1,12 @@
 import path from 'path';
 import fs from 'fs';
 import type { Response, NextFunction } from 'express';
-import type { AuthRequest } from '../middleware/auth.middleware';
-import { extractText } from '../utils/textExtractor';
-import { chunkText } from '../services/chunk-service';
-import { generateEmbedding } from '../services/embedding-service';
-import { generateAnswer } from '../services/llm-service';
-import { getEmbeddingsCollection, getDocumentsCollection } from '../config/mongo';
+import type { AuthRequest } from '../../middleware/auth.middleware';
+import { extractText } from '../../utils/textExtractor';
+import { chunkText } from '../../services/chunk-service';
+import { generateEmbedding } from '../../services/embedding-service';
+import { generateAnswer } from '../../services/llm-service';
+import { getEmbeddingsCollection, getDocumentsCollection } from '../../config/mongo';
 
 /**
  * POST /api/documents/upload
@@ -231,7 +231,7 @@ const deleteDocument = async (req: AuthRequest, res: Response, next: NextFunctio
     await embeddingsCollection.deleteMany({ file_id: id });
     await documentsCollection.deleteOne({ file_id: id, user_id: userId });
 
-    const uploadDir = path.join(__dirname, '..', '..', 'uploads');
+    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads');
     const filePath = path.join(uploadDir, doc.file_name);
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);

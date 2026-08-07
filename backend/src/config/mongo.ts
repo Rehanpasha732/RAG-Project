@@ -1,4 +1,4 @@
-import { MongoClient, Collection } from 'mongodb';
+import { MongoClient, Collection, ObjectId } from 'mongodb';
 
 const uri = process.env.MONGODB_URI || '';
 const dbName = process.env.MONGODB_DB || 'ragdb';
@@ -28,6 +28,8 @@ export interface DocumentRecord {
     pages: number;
     text_length: number;
     uploaded_at: Date;
+    status?: 'processing' | 'ready' | 'failed';
+    error?: string;
 }
 
 export interface UserRecord {
@@ -35,6 +37,24 @@ export interface UserRecord {
     email: string;
     password: string;
     created_at: Date;
+    role?: 'user' | 'admin';
+    disabled?: boolean;
+}
+
+export interface ConversationMessage {
+    role: 'user' | 'assistant';
+    text: string;
+    sources?: { file_name: string; score: number }[];
+    created_at: Date;
+}
+
+export interface ConversationDoc {
+    _id?: ObjectId;
+    user_id: string;
+    title: string;
+    created_at: Date;
+    updated_at: Date;
+    messages: ConversationMessage[];
 }
 
 async function ensureConnected() {
@@ -59,5 +79,12 @@ export async function getUsersCollection(): Promise<Collection<UserRecord>> {
     await ensureConnected();
     const collection = client.db(dbName).collection<UserRecord>('users');
     await collection.createIndex({ email: 1 }, { unique: true });
+    return collection;
+}
+
+export async function getConversationsCollection(): Promise<Collection<ConversationDoc>> {
+    await ensureConnected();
+    const collection = client.db(dbName).collection<ConversationDoc>('conversations');
+    await collection.createIndex({ user_id: 1, updated_at: -1 });
     return collection;
 }

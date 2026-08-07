@@ -16,8 +16,8 @@ html {
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background: #0a0a1a;
-  color: #e2e8f0;
+  background: #0b0f14;
+  color: #e6edf3;
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -27,14 +27,14 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a1a;
+  background: #0b0f14;
 }
 ::-webkit-scrollbar-thumb {
-  background: #4f46e5;
+  background: #0d9488;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #6366f1;
+  background: #14b8a6;
 }
 
 /* Glass effect utility */
@@ -45,16 +45,16 @@ body {
 
   .glass-input {
     @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-xl
-           focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20
+           focus:border-teal-500/50 focus:ring-2 focus:ring-teal-500/20
            transition-all duration-300 outline-none;
   }
 
   .btn-primary {
-    @apply bg-gradient-to-r from-indigo-600 to-purple-600
-           hover:from-indigo-500 hover:to-purple-500
+    @apply bg-gradient-to-r from-teal-600 to-cyan-600
+           hover:from-teal-500 hover:to-cyan-500
            text-white font-semibold py-3 px-8 rounded-xl
            transition-all duration-300 transform hover:scale-[1.02]
-           active:scale-[0.98] shadow-lg hover:shadow-indigo-500/25
+           active:scale-[0.98] shadow-lg hover:shadow-teal-500/25
            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
   }
 

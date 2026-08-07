@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
-import { getUsersCollection } from '../config/mongo';
+import { getUsersCollection } from '../../config/mongo';
 
 function signToken(id: string, email: string) {
     return jwt.sign(
@@ -61,6 +61,10 @@ const login = async (req: Request, res: Response, next: NextFunction) => {
         const user = await users.findOne({ email: email.toLowerCase() });
         if (!user) {
             return res.status(401).json({ success: false, error: 'Invalid email or password' });
+        }
+
+        if (user.disabled) {
+            return res.status(403).json({ success: false, error: 'This account has been disabled. Contact an administrator.' });
         }
 
         const isMatch = await bcrypt.compare(password, user.password);

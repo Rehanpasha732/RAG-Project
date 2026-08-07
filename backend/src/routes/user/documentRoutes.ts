@@ -1,6 +1,6 @@
 import express from 'express';
-import upload from '../middleware/upload';
-import { authenticate } from '../middleware/auth.middleware';
+import upload from '../../middleware/upload';
+import { authenticate } from '../../middleware/auth.middleware';
 import {
   uploadDocument,
   listDocuments,
@@ -9,7 +9,7 @@ import {
   deleteDocument,
   embedQuery,
   askQuestion
-} from '../controllers/documentController';
+} from '../../controllers/user/documentController';
 
 const router = express.Router();
 

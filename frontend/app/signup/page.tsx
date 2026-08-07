@@ -27,7 +27,7 @@ export default function SignupPage() {
     try {
       await signup(name, email, password);
       toast.success('Account created!');
-      router.push('/dashboard');
+      router.push('/');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Signup failed';
       toast.error(message);
@@ -41,14 +41,14 @@ export default function SignupPage() {
       <ParticlesBackground />
 
       <div className="relative z-10 w-full max-w-md animate-fade-in">
-        <Link href="/" className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+        <div className="flex items-center justify-center gap-2 mb-8">
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-500 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="text-2xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-            DocXtract
+          <span className="text-2xl font-bold bg-gradient-to-r from-teal-400 to-cyan-400 bg-clip-text text-transparent">
+            Cortex
           </span>
-        </Link>
+        </div>
 
         <div className="glass-card p-8">
           <h1 className="text-2xl font-bold mb-1">Create your account</h1>
@@ -124,7 +124,7 @@ export default function SignupPage() {
 
           <p className="text-center text-sm text-gray-500 mt-6">
             Already have an account?{' '}
-            <Link href="/login" className="text-indigo-400 hover:text-indigo-300 font-medium">
+            <Link href="/login" className="text-teal-400 hover:text-teal-300 font-medium">
               Sign in
             </Link>
           </p>
