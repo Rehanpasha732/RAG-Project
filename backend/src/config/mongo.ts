@@ -16,11 +16,47 @@ export interface DocumentEmbeddingDoc {
     created_at: Date;
 }
 
-export async function getEmbeddingsCollection(): Promise<Collection<DocumentEmbeddingDoc>> {
+export interface DocumentRecord {
+    file_id: string;
+    user_id: string;
+    original_name: string;
+    file_name: string;
+    mimetype: string;
+    size: number;
+    size_formatted: string;
+    pages: number;
+    text_length: number;
+    uploaded_at: Date;
+}
+
+export interface UserRecord {
+    name: string;
+    email: string;
+    password: string;
+    created_at: Date;
+}
+
+async function ensureConnected() {
     if (!connected) {
         await client.connect();
         connected = true;
         console.log('Connected to MongoDB Atlas.');
     }
+}
+
+export async function getEmbeddingsCollection(): Promise<Collection<DocumentEmbeddingDoc>> {
+    await ensureConnected();
     return client.db(dbName).collection<DocumentEmbeddingDoc>('document_embeddings');
+}
+
+export async function getDocumentsCollection(): Promise<Collection<DocumentRecord>> {
+    await ensureConnected();
+    return client.db(dbName).collection<DocumentRecord>('documents');
+}
+
+export async function getUsersCollection(): Promise<Collection<UserRecord>> {
+    await ensureConnected();
+    const collection = client.db(dbName).collection<UserRecord>('users');
+    await collection.createIndex({ email: 1 }, { unique: true });
+    return collection;
 }
