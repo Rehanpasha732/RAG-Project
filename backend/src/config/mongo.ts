@@ -3,6 +3,13 @@ import { MongoClient, Collection, ObjectId } from 'mongodb';
 const uri = process.env.MONGODB_URI || '';
 const dbName = process.env.MONGODB_DB || 'ragdb';
 
+/**
+ * Sentinel used as `user_id` on documents/embeddings uploaded by an admin
+ * on behalf of the whole company. Not a real user id, so it never collides
+ * with an ObjectId string, and every employee's retrieval filter includes it.
+ */
+export const COMPANY_SCOPE = 'company';
+
 const client = new MongoClient(uri);
 let connected = false;
 

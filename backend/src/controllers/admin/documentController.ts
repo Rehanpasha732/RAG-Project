@@ -3,10 +3,8 @@ import fs from 'fs';
 import { ObjectId } from 'mongodb';
 import type { Response, NextFunction } from 'express';
 import type { AuthRequest } from '../../middleware/auth.middleware';
-import { extractText } from '../../utils/textExtractor';
-import { chunkText } from '../../services/chunk-service';
-import { generateEmbedding } from '../../services/embedding-service';
-import { getEmbeddingsCollection, getDocumentsCollection, getUsersCollection } from '../../config/mongo';
+import { ingestDocument } from '../../services/document-pipeline';
+import { getEmbeddingsCollection, getDocumentsCollection, getUsersCollection, COMPANY_SCOPE } from '../../config/mongo';
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
@@ -18,9 +16,10 @@ function formatBytes(bytes: number): string {
 
 /**
  * POST /api/admin/documents/upload
- * Admin uploads a document on behalf of a specific user. Reuses the same
+ * Admin uploads a document for the whole company — every employee's RAG
+ * queries can retrieve it, it's not tied to any one user. Reuses the same
  * extractText -> chunkText -> generateEmbedding pipeline as the user-facing
- * upload, untouched — only the owner and status bookkeeping differ.
+ * upload, untouched — only the owner (COMPANY_SCOPE) and status bookkeeping differ.
  */
 const adminUploadDocument = async (req: AuthRequest, res: Response, next: NextFunction) => {
   const documentsCollection = await getDocumentsCollection();
@@ -31,22 +30,6 @@ const adminUploadDocument = async (req: AuthRequest, res: Response, next: NextFu
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
 
-    const { targetUserId } = req.body;
-    if (!targetUserId || typeof targetUserId !== 'string') {
-      return res.status(400).json({ success: false, error: 'targetUserId is required' });
-    }
-
-    const usersCollection = await getUsersCollection();
-    let targetUser;
-    try {
-      targetUser = await usersCollection.findOne({ _id: new ObjectId(targetUserId) });
-    } catch {
-      return res.status(400).json({ success: false, error: 'Invalid targetUserId' });
-    }
-    if (!targetUser) {
-      return res.status(404).json({ success: false, error: 'Target user not found' });
-    }
-
     const file = req.file;
     const filePath = file.path;
     const mimetype = file.mimetype;
@@ -55,7 +38,7 @@ const adminUploadDocument = async (req: AuthRequest, res: Response, next: NextFu
 
     await documentsCollection.insertOne({
       file_id: fileId,
-      user_id: targetUserId,
+      user_id: COMPANY_SCOPE,
       original_name: file.originalname,
       file_name: file.filename,
       mimetype,
@@ -67,27 +50,13 @@ const adminUploadDocument = async (req: AuthRequest, res: Response, next: NextFu
       status: 'processing'
     });
 
-    const extracted = await extractText(filePath, mimetype);
-    const chunks = await chunkText(extracted.text);
-    const chunksWithEmbeddings = [];
-    for (const chunk of chunks) {
-      const embedding = await generateEmbedding(chunk.text);
-      chunksWithEmbeddings.push({ ...chunk, embedding });
-    }
-
-    const embeddingsCollection = await getEmbeddingsCollection();
-    await embeddingsCollection.insertMany(
-      chunksWithEmbeddings.map(chunk => ({
-        file_id: fileId as string,
-        user_id: targetUserId,
-        file_name: file.originalname,
-        chunk_index: chunk.id,
-        text: chunk.text,
-        embedding: chunk.embedding,
-        metadata: chunk.metadata,
-        created_at: new Date()
-      }))
-    );
+    const { extracted, chunksCount } = await ingestDocument({
+      filePath,
+      mimetype,
+      fileId,
+      ownerId: COMPANY_SCOPE,
+      originalName: file.originalname
+    });
 
     await documentsCollection.updateOne(
       { file_id: fileId },
@@ -99,15 +68,15 @@ const adminUploadDocument = async (req: AuthRequest, res: Response, next: NextFu
       document: {
         id: fileId,
         originalName: file.originalname,
-        ownerId: targetUserId,
-        ownerName: targetUser.name,
-        ownerEmail: targetUser.email,
+        ownerId: COMPANY_SCOPE,
+        ownerName: 'Company-wide',
+        ownerEmail: 'All employees',
         status: 'ready',
         pages: extracted.pages,
         sizeFormatted: formatBytes(file.size),
         uploadedAt: uploadedAt.toISOString()
       },
-      chunksCount: chunks.length
+      chunksCount
     });
 
   } catch (err) {
@@ -139,7 +108,7 @@ const adminListDocuments = async (req: AuthRequest, res: Response, next: NextFun
     const docs = await documentsCollection.find(filter).sort({ uploaded_at: -1 }).toArray();
 
     const usersCollection = await getUsersCollection();
-    const ownerIds = Array.from(new Set(docs.map(d => d.user_id)));
+    const ownerIds = Array.from(new Set(docs.map(d => d.user_id).filter(id => id !== COMPANY_SCOPE)));
     const owners = await usersCollection
       .find({ _id: { $in: ownerIds.map(id => { try { return new ObjectId(id); } catch { return null; } }).filter((v): v is ObjectId => v !== null) } })
       .toArray();
@@ -148,6 +117,23 @@ const adminListDocuments = async (req: AuthRequest, res: Response, next: NextFun
     res.json({
       success: true,
       documents: docs.map(doc => {
+        if (doc.user_id === COMPANY_SCOPE) {
+          return {
+            id: doc.file_id,
+            originalName: doc.original_name,
+            mimetype: doc.mimetype,
+            size: doc.size,
+            sizeFormatted: doc.size_formatted,
+            pages: doc.pages,
+            textLength: doc.text_length,
+            uploadedAt: doc.uploaded_at,
+            status: doc.status || 'ready',
+            error: doc.error || null,
+            ownerId: doc.user_id,
+            ownerName: 'Company-wide',
+            ownerEmail: 'All employees'
+          };
+        }
         const owner = ownerMap.get(doc.user_id);
         return {
           id: doc.file_id,
@@ -188,10 +174,12 @@ const adminGetDocument = async (req: AuthRequest, res: Response, next: NextFunct
 
     const usersCollection = await getUsersCollection();
     let owner = null;
-    try {
-      owner = await usersCollection.findOne({ _id: new ObjectId(doc.user_id) });
-    } catch {
-      owner = null;
+    if (doc.user_id !== COMPANY_SCOPE) {
+      try {
+        owner = await usersCollection.findOne({ _id: new ObjectId(doc.user_id) });
+      } catch {
+        owner = null;
+      }
     }
 
     res.json({
@@ -209,8 +197,8 @@ const adminGetDocument = async (req: AuthRequest, res: Response, next: NextFunct
         status: doc.status || 'ready',
         error: doc.error || null,
         ownerId: doc.user_id,
-        ownerName: owner?.name || 'Unknown',
-        ownerEmail: owner?.email || 'Unknown'
+        ownerName: doc.user_id === COMPANY_SCOPE ? 'Company-wide' : (owner?.name || 'Unknown'),
+        ownerEmail: doc.user_id === COMPANY_SCOPE ? 'All employees' : (owner?.email || 'Unknown')
       }
     });
 

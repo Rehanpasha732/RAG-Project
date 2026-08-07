@@ -17,7 +17,7 @@ import AdminProtectedRoute from '@/components/AdminProtectedRoute';
 import AdminSidebarNav from '@/components/admin/AdminSidebarNav';
 import Modal from '@/components/ui/Modal';
 import * as adminApi from '@/lib/adminApi';
-import type { AdminDocument, AdminUserRow } from '@/lib/adminApi';
+import type { AdminDocument } from '@/lib/adminApi';
 
 const STATUS_STYLES: Record<string, string> = {
   processing: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -33,8 +33,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function UploadModal({ users, onClose, onUploaded }: { users: AdminUserRow[]; onClose: () => void; onUploaded: () => void }) {
-  const [targetUserId, setTargetUserId] = useState('');
+function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded: () => void }) {
   const [uploading, setUploading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
 
@@ -53,14 +52,10 @@ function UploadModal({ users, onClose, onUploaded }: { users: AdminUserRow[]; on
       toast.error('Choose a file to upload');
       return;
     }
-    if (!targetUserId) {
-      toast.error('Choose a user to upload on behalf of');
-      return;
-    }
     setUploading(true);
     try {
-      await adminApi.adminUploadDocument(file, targetUserId);
-      toast.success(`${file.name} uploaded`);
+      await adminApi.adminUploadDocument(file);
+      toast.success(`${file.name} uploaded for all employees`);
       onUploaded();
       onClose();
     } catch (err: unknown) {
@@ -72,23 +67,9 @@ function UploadModal({ users, onClose, onUploaded }: { users: AdminUserRow[]; on
   };
 
   return (
-    <Modal title="Upload document" onClose={onClose}>
+    <Modal title="Upload company document" onClose={onClose}>
       <div className="space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-gray-400 mb-1.5">On behalf of</label>
-          <select
-            value={targetUserId}
-            onChange={(e) => setTargetUserId(e.target.value)}
-            className="glass-input w-full py-2.5 px-3 text-sm bg-[#12181f]"
-          >
-            <option value="">Select a user…</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} ({u.email})
-              </option>
-            ))}
-          </select>
-        </div>
+        <p className="text-xs text-gray-500">This file will be available to every employee's AI chat — not tied to a specific user.</p>
 
         <div
           {...getRootProps()}
@@ -145,7 +126,6 @@ function DetailModal({ doc, onClose }: { doc: AdminDocument; onClose: () => void
 
 function DocumentsContent() {
   const [documents, setDocuments] = useState<AdminDocument[]>([]);
-  const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -168,7 +148,6 @@ function DocumentsContent() {
 
   useEffect(() => {
     fetchDocuments();
-    adminApi.listUsers().then((res) => setUsers(res.users)).catch(() => {});
   }, [fetchDocuments]);
 
   const handleDelete = async (id: string) => {
@@ -191,7 +170,7 @@ function DocumentsContent() {
       <div className="flex items-center justify-between mb-8 gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold mb-1">Documents</h1>
-          <p className="text-gray-500 text-sm">Upload and manage documents on behalf of your users.</p>
+          <p className="text-gray-500 text-sm">Upload and manage documents shared with every employee.</p>
         </div>
         <button onClick={() => setShowUpload(true)} className="btn-primary !py-2.5 !px-5 text-sm flex items-center gap-2">
           <Upload className="w-4 h-4" /> Upload
@@ -274,7 +253,7 @@ function DocumentsContent() {
       )}
 
       {showUpload && (
-        <UploadModal users={users} onClose={() => setShowUpload(false)} onUploaded={() => fetchDocuments(search)} />
+        <UploadModal onClose={() => setShowUpload(false)} onUploaded={() => fetchDocuments(search)} />
       )}
       {detailDoc && <DetailModal doc={detailDoc} onClose={() => setDetailDoc(null)} />}
     </div>

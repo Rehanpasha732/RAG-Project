@@ -92,10 +92,9 @@ export async function adminGetDocument(id: string): Promise<{ success: boolean; 
   return handleResponse(res);
 }
 
-export async function adminUploadDocument(file: File, targetUserId: string): Promise<{ success: boolean; document: Record<string, unknown> }> {
+export async function adminUploadDocument(file: File): Promise<{ success: boolean; document: Record<string, unknown> }> {
   const formData = new FormData();
   formData.append('document', file);
-  formData.append('targetUserId', targetUserId);
 
   const res = await fetch(`${API_URL}/admin/documents/upload`, {
     method: 'POST',

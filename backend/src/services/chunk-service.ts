@@ -8,8 +8,8 @@ async function chunkText(text: string): Promise<TextChunk[]> {
   const { RecursiveCharacterTextSplitter } = await import('@langchain/textsplitters');
 
   const splitter = new RecursiveCharacterTextSplitter({
-    chunkSize: 300,
-    chunkOverlap: 50,
+    chunkSize: 700,
+    chunkOverlap: 100,
   });
 
   const docs = await splitter.createDocuments([text]);
