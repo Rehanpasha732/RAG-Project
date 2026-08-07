@@ -1,0 +1,27 @@
+{
+  "default_branch": "main",
+  "branches": [
+    "Phase-2",
+    "Phase-3-Admin-and-client",
+    "embedding",
+    "main",
+    "origin",
+    "store-vector"
+  ],
+  "parent": {
+    "Phase-2": "main",
+    "Phase-3-Admin-and-client": "main",
+    "embedding": "main",
+    "main": null,
+    "origin": "main",
+    "store-vector": "main"
+  },
+  "order": [
+    "main",
+    "Phase-2",
+    "Phase-3-Admin-and-client",
+    "embedding",
+    "origin",
+    "store-vector"
+  ]
+}

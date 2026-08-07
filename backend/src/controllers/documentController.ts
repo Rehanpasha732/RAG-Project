@@ -8,10 +8,6 @@ import { generateEmbedding } from '../services/embedding-service';
 import { generateAnswer } from '../services/llm-service';
 import { getEmbeddingsCollection, getDocumentsCollection } from '../config/mongo';
 
-/**
- * POST /api/documents/upload
- * Upload a document, extract text, generate + store embeddings
- */
 const uploadDocument = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     if (!req.file) {
@@ -100,10 +96,7 @@ const uploadDocument = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 };
 
-/**
- * GET /api/documents
- * List all documents belonging to the authenticated user
- */
+
 const listDocuments = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id;
@@ -134,10 +127,7 @@ const listDocuments = async (req: AuthRequest, res: Response, next: NextFunction
   }
 };
 
-/**
- * GET /api/documents/:id
- * Get a single document's details (must belong to the authenticated user)
- */
+
 const getDocument = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -173,10 +163,7 @@ const getDocument = async (req: AuthRequest, res: Response, next: NextFunction) 
   }
 };
 
-/**
- * PATCH /api/documents/:id
- * Rename a document (must belong to the authenticated user)
- */
+
 const updateDocument = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -211,10 +198,6 @@ const updateDocument = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 };
 
-/**
- * DELETE /api/documents/:id
- * Delete a document, its embeddings, and its file (must belong to the authenticated user)
- */
 const deleteDocument = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -244,11 +227,7 @@ const deleteDocument = async (req: AuthRequest, res: Response, next: NextFunctio
   }
 };
 
-/**
- * POST /api/documents/query-embedding
- * Take a user's question and embed it using the same Ollama model
- * used for document chunks. First step of retrieval — no search yet.
- */
+
 const embedQuery = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { query } = req.body;
@@ -271,11 +250,6 @@ const embedQuery = async (req: AuthRequest, res: Response, next: NextFunction) =
   }
 };
 
-/**
- * Shared retrieval step: embed the query, then run MongoDB Atlas Vector
- * Search (user-scoped) against stored chunk embeddings. Used by both
- * askQuestion, so retrieval logic lives in exactly one place.
- */
 async function retrieveChunks(query: string, userId: string, limit: number) {
   const queryEmbedding = await generateEmbedding(query);
   const embeddingsCollection = await getEmbeddingsCollection();
@@ -304,11 +278,7 @@ async function retrieveChunks(query: string, userId: string, limit: number) {
   ]).toArray();
 }
 
-/**
- * POST /api/documents/ask
- * Full RAG: retrieve relevant chunks via the retrieveChunks helper,
- * then ask the LLM to answer using only those chunks as context.
- */
+
 const askQuestion = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const { query, topK } = req.body;
