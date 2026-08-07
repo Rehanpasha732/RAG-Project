@@ -28,7 +28,7 @@ RULES for real questions:
 TONE: professional, clear, and warm — like a knowledgeable colleague, not a search engine.`;
 
   const response = await ollama.chat({
-    model: 'llama3.2:3b',
+    model: process.env.model || 'llama3.2:3b',
     messages: [
       {
         role: 'system',
